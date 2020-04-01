@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>pckr</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <style>
+  body {
+    background-color: black;
+    color: white;
+    font-family: "Monaco", sans-serif;
+  }
+
+  div#images {
+    width: 100%;
+    height: 750px;
+  }
+
+  div#images div {
+    display: inline-block;
+  }
+
+  div#images div img {
+    max-width: 100%;
+    vertical-align: top;
+  }
+
+  div#images div img.marked {
+    opacity: 0.3;
+  }
+
+  div.img-side {
+    width: 10%;
+  }
+
+  div.img-middle {
+    width: 35%;
+  }
+
+  div#marked {
+    width: 90%;
+    padding: 10px;
+  }
+
+  ul {
+    margin: 10px 0 10px 0;
+    padding: 2px;
+    list-style-type: none;
+  }
+
+  textarea {
+    display: none;
+    margin: 10px 0 10px 0;
+    width: inherit;
+  }
+  </style>
+</head>
+<body>
+  <div id="images">
+    <h2></h2>
+    <div class="img-side"><img id="i3-left" /></div>
+    <div class="img-side"><img id="i2-left" /></div>
+    <div class="img-side"><img id="i1-left" /></div>
+    <div class="img-middle"><img id="middle" /></div>
+    <div class="img-side"><img id="i1-right" /></div>
+    <div class="img-side"><img id="i2-right" /></div>
+    <div class="img-side"><img id="i3-right" /></div>
+  </div>
+  <div id="marked">
+    <ul></ul>
+  </div>
+</body>
+<script>
+  $.fn.mark = function(marked, index) {
+    if (marked.has(index)) {
+      $(this).addClass("marked");
+    } else {
+      $(this).removeClass("marked");
+    }
+    return this;
+  };
+
+  function src(images, index) {
+    return index >= 0 && index < images.length
+      ? images[index]
+      : "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+  }
+
+  function setImage(images, marked, index, selector) {
+    $("#images img#" + selector)
+      .attr("src", src(images, index))
+      .mark(marked, index);
+  }
+
+  function setImages(images, marked, index) {
+    for (var i = index - 3; i <= index + 3; i++) {
+      if (i < index) {
+        selector = "i" + (index - i) + "-left";
+      } else if (i > index) {
+        selector = "i" + (i - index) + "-right";
+      } else {
+        selector = "middle";
+      }
+      setImage(images, marked, i, selector);
+    }
+
+    $("#images h2").text(images[index] + " (" + index + "/" + images.length + ")");
+  }
+
+  function updateMarked(images, marked) {
+    var list = Array.from(marked).map(n => images[n]);
+    list.sort();
+    $("#marked ul").html(list.map(n => "<li>" + n + "</li>").join(""));
+    $("#marked textarea").text(list.join("\0"));
+  }
+
+  $(document).ready(function() {
+    $.getJSON("pckr.json", function(images) {
+      if (images.length > 0) {
+        var index = 0;
+        var marked = new Set();
+
+        $(document).keydown(function(event) {
+          if (event.keyCode == 39) {  // right arrow
+            index = Math.min(images.length - 1, index + 1);
+          } else if (event.keyCode == 37) {  // left arrow
+            index = Math.max(0, index - 1);
+          } else if (event.keyCode == 68) {  // d
+            if (marked.has(index)) {
+              marked.delete(index);
+            } else {
+              marked.add(index);
+            }
+            updateMarked(images, marked);
+          } else if (event.keyCode == 48) {  // 0
+            index = 0;
+          } else if (event.keyCode == 69) {  // e
+            index = images.length - 1;
+          } else if (event.keyCode == 74) {  // j
+            var input = prompt("Jump to?");
+            if (input !== null) {
+              var n = Number(input);
+              if (!isNaN(n)) {
+                index = Math.min(Math.max(0, n), images.length - 1);
+              }
+            }
+          }
+          setImages(images, marked, index);
+        });
+
+        setImages(images, marked, 0);
+      } else {
+        $("#images p").text("No images found!");
+      }
+    });
+  });
+</script>
+</html>
